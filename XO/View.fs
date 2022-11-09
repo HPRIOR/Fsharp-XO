@@ -10,13 +10,15 @@ let render (game: Game) =
     let endIndices = [ 2; 5; 8 ]
 
     let boardStr =
-        board
-        |> List.map (fun xo -> square (xo |> string))
+        board.Value
+        |> List.map (fun xo -> square (xo.ToString()))
         |> List.indexed
         |> List.map (fun (i, elem) ->
             if endIndices |> List.contains i then
-                elem + "\n" + line 
+                elem + "\n" + line
             else
                 elem)
 
-    boardStr |> List.map (fun x -> printf $"{x}")  |> ignore
+    boardStr
+    |> List.map (fun x -> printf $"{x}")
+    |> ignore

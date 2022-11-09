@@ -5,8 +5,27 @@ open XO.Utils
 
 let game = Game.create
 
-let updateGame = Game.update game (Position (1,2))
+let mutable loop = true
 
-updateGame.iter  View.render 
+let parse (input: string) =
+    try
+        let split = input.Split [| ' ' |]
+        Ok(split[0] |> int, split[1] |> int)
+    with
+    | :? System.FormatException -> Error "could not parse input"
 
 
+
+
+while loop do
+    let input = System.Console.ReadLine()
+    let parseResult = parse input
+    
+    match parseResult with
+    | 
+
+
+let updateGame =
+    Game.update game (Move.create (1, 2))
+
+updateGame.iter View.render

@@ -47,15 +47,13 @@ module Move =
             | Position a -> a
 
     // Make invalid states unrepresentable...
-    let create (position: int * int) =
+    let create (position: int * int) : Move option =
         let x, y = position
 
         if x >= 3 || y >= 3 || x < 0 || y < 0 then
-            failwith
-                $"""Move outside of board range:
-                        Expected range (0..2, 0..2) less than or greater than received ({x}, {y})"""
+            None
         else
-            Position((x * 3) + y)
+            Some(Position((x * 3) + y))
 
 
 module Board =
@@ -126,7 +124,7 @@ module Game =
             let state = game.state
 
             let newBoard =
-                board 
+                board
                 |> Board.updateWithMove move state.CurrentPlayer.AsBoardPiece
 
             let newState =
