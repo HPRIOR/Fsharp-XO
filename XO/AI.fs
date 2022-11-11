@@ -4,7 +4,7 @@ open Model
 
 module AI =
 
-    let possibleMoves (board: Board.Board) =
+    let private getPossibleMoves (board: Board.Board) =
         board.Value
         |> List.indexed
         |> List.filter (fun (_, elem) -> elem = Empty)
@@ -15,7 +15,7 @@ module AI =
             | Error _ -> failwith "")
 
 
-    type AIPlayer =
+    type private AIPlayer =
         | Naught
         | Cross
         member this.Next =
@@ -24,33 +24,54 @@ module AI =
             | Cross -> Naught
 
 
-    let unwrapOrFail result =
+    let private unwrapOrFail result =
         match result with
         | Ok a -> a
         | Error _ -> failwith ""
 
+    let private minMax (game: Game) recurse returnMinOrMax : int =
+        let possibleMoves =
+            getPossibleMoves game.board
 
-    let selectMove (game: Game) firstMove =
-        let rec recurse (currentPlayer: AIPlayer) currentMove game =
+        let createGameWithMove move = move |> Game.update game
+
+        possibleMoves
+        |> List.map createGameWithMove
+        |> List.map unwrapOrFail // ai will currently not cause failure (due to double move)
+        |> List.map recurse
+        |> returnMinOrMax
+
+
+
+    // todo remove mutable values
+    let private rateMove (game: Game) =
+        let rec recurse (currentPlayer: AIPlayer) game =
             match game with
-            | { state = Won Player.Naught } -> (-1, currentMove)
-            | { state = Won Player.Cross } -> (1, currentMove)
-            | { state = Over _ } -> (0, currentMove)
+            | { state = Won Player.Naught } -> -1
+            | { state = Won Player.Cross } -> 1
+            | { state = Over _ } -> 0
             | _ ->
                 match currentPlayer with
                 | Naught ->
-                    possibleMoves game.board
-                    |> List.map (fun nextMove -> ((Game.update game nextMove), nextMove))
-                    |> List.map (fun (nextGame, nextMove) -> ((unwrapOrFail nextGame), nextMove))
-                    |> List.map (fun (nextGame, nextMove) -> recurse currentPlayer.Next nextMove nextGame)
-                    |> List.min
+                    let mutable value = 2
+                    value <- min (minMax game (recurse currentPlayer.Next) List.min) value
+                    value
                 | Cross ->
-                    possibleMoves game.board
-                    |> List.map (fun nextMove -> ((Game.update game nextMove), nextMove))
-                    |> List.map (fun (nextGame, nextMove) -> ((unwrapOrFail nextGame), nextMove))
-                    |> List.map (fun (nextGame, nextMove) -> recurse currentPlayer.Next nextMove nextGame)
-                    |> List.max
+                    let mutable value = -2
+                    value <- max (minMax game (recurse currentPlayer.Next) List.max) value
+                    value
+        
+        recurse Naught game
 
-        recurse Naught firstMove game |> snd
 
-// return the best score for each possible move
+    let miniMax (game: Game) =
+        let possibleMoves =
+            getPossibleMoves game.board
+
+        possibleMoves
+        |> List.map (Game.update game)
+        |> List.map unwrapOrFail
+        |> List.map rateMove
+        |> List.zip possibleMoves
+        |> List.maxBy snd
+        |> fst

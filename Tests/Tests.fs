@@ -214,16 +214,16 @@ let ``Ai will find correct move`` () =
         match Move.create (2, 0) with
         | Ok move -> move
         | Error _ -> failwith "could not create move"
-    
+
     let expectedMove =
         match Move.create (1, 0) with
         | Ok move -> move
         | Error _ -> failwith "could not create move"
 
 
-    let aiMove = AI.selectMove game lastMadeMove 
-    
-    Assert.Equal( expectedMove, aiMove)
+    let aiMove = AI.miniMax game
+
+    Assert.Equal(expectedMove, aiMove)
 
 
     ()
