@@ -1,31 +1,41 @@
 ﻿open XO
 open XO.Model
-open XO.Utils
-// For more information see https://aka.ms/fsharp-console-apps
 
 let game = Game.create
 
-let mutable loop = true
 
-let parse (input: string) =
+let getUserInput _ : Result<int * int, string> =
     try
+        let input = System.Console.ReadLine()
         let split = input.Split [| ' ' |]
-        Ok(split[0] |> int, split[1] |> int)
+        let x, y = split[0] |> int, split[1] |> int
+        Ok(x, y)
     with
-    | :? System.FormatException -> Error "could not parse input"
+    | _ -> Error "Could not parse input, should be in the format 'x y'"
 
 
 
+let rec getUserMove (currentGame: Game) =
+    View.render currentGame
 
-while loop do
-    let input = System.Console.ReadLine()
-    let parseResult = parse input
-    
-    match parseResult with
-    | 
+    match currentGame with
+    | { state = Won player } -> printf $"{player} won!"
+    | { state = Over msg } -> printf $"{msg}"
+    | currentGame ->
+        let gameResult =
+            getUserInput ()
+            |> Result.bind Move.create
+            |> Result.bind (Game.update currentGame)
+
+        match gameResult with
+        | Error e ->
+            printf $"{e}\n"
+            getUserMove currentGame
+        | Ok newGame -> getUserMove newGame
 
 
-let updateGame =
-    Game.update game (Move.create (1, 2))
 
-updateGame.iter View.render
+[<EntryPoint>]
+let main _ =
+    getUserMove Game.create
+    0

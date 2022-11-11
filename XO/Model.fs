@@ -25,13 +25,22 @@ type Player =
         | Naught -> BoardPiece.Naught
         | Cross -> BoardPiece.Cross
 
+type BoardPiece with
+    member this.AsPlayer =
+        match this with
+        | Naught -> Player.Naught
+        | Cross -> Player.Cross
+        | _ -> failwith "Cannot convert empty to player"
+
 type State =
     | Active of CurrentPlayer: Player
     | Won of Winner: Player
+    | Over of Msg: string
     member this.CurrentPlayer: Player =
         match this with
         | Active player -> player
         | Won player -> player
+        | _ -> Naught
 
 
 
@@ -47,16 +56,27 @@ module Move =
             | Position a -> a
 
     // Make invalid states unrepresentable...
-    let create (position: int * int) : Move option =
+    let private boardErrorMsg =
+        "Move must be within the bounds of the board"
+
+    let create (position: int * int) : Result<Move, string> =
         let x, y = position
 
         if x >= 3 || y >= 3 || x < 0 || y < 0 then
-            None
+            Error boardErrorMsg
         else
-            Some(Position((x * 3) + y))
+            Ok(Position((x * 3) + y))
+
+    let fromIndex (i: int) : Result<Move, string> =
+        if i > 8 then
+            Error boardErrorMsg
+        else
+            Ok(Position i)
+
 
 
 module Board =
+
     type Board =
         private
         | Board of BoardPiece list
@@ -66,6 +86,7 @@ module Board =
 
     let create =
         Board [ for _ in 0..8 -> Empty ]
+
 
     let updateWithMove (move: Move.Move) (piece: BoardPiece) (board: Board) =
         Board(board.Value |> List.updateAt move.Value piece)
@@ -104,6 +125,17 @@ module Board =
         let move = move.Value
         board[move] <> Empty
 
+    let (|IsOccupied|_|) (move: Move.Move) (board: Board) =
+        if board |> occupiedAt move then
+            Some "Move already occupied\n"
+        else
+            None
+
+
+    let isFull (board: Board) =
+        not (board.Value |> (List.exists (fun x -> x = Empty)))
+
+
 
 
 type Game = { state: State; board: Board.Board }
@@ -115,21 +147,33 @@ module Game =
           board = Board.create }
 
 
-    let update (game: Game) (move: Move.Move) : Result<Game, Game> =
+    let update (game: Game) (move: Move.Move) : Result<Game, string> =
         let board = game.board
+        let state = game.state
+        let currentPlayer = state.CurrentPlayer
 
-        if board |> Board.occupiedAt move then
-            Error game
-        else
-            let state = game.state
+        let currentBoardPiece =
+            currentPlayer.AsBoardPiece
+
+        match board with
+        | Board.IsOccupied move msg -> Error msg
+        | _ ->
 
             let newBoard =
                 board
-                |> Board.updateWithMove move state.CurrentPlayer.AsBoardPiece
+                |> Board.updateWithMove move currentBoardPiece
+
+            let hasWinner = newBoard |> Board.hasWinner
+            let isFull = newBoard |> Board.isFull
 
             let newState =
-                match newBoard |> Board.hasWinner with
-                | true -> Won state.CurrentPlayer
-                | false -> Active state.CurrentPlayer.Next
+                match hasWinner with
+                | true -> Won currentPlayer
+                | false -> Active currentPlayer.Next
 
-            Ok { state = newState; board = newBoard }
+            if isFull && not hasWinner then
+                Ok
+                    { state = Over "Nobody won :("
+                      board = newBoard }
+            else
+                Ok { state = newState; board = newBoard }
