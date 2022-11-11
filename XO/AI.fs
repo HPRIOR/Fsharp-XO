@@ -29,7 +29,7 @@ module AI =
         | Ok a -> a
         | Error _ -> failwith ""
 
-    let private minMax (game: Game) recurse returnMinOrMax : int =
+    let private minMax (game: Game) (recurse: Game -> int) (returnMinOrMax: int list -> int) : int =
         let possibleMoves =
             getPossibleMoves game.board
 
@@ -44,7 +44,7 @@ module AI =
 
 
     // todo remove mutable values
-    let private rateMove (game: Game) =
+    let private rateMove (game: Game) : int =
         let rec recurse (currentPlayer: AIPlayer) game =
             match game with
             | { state = Won Player.Naught } -> -1
@@ -60,7 +60,7 @@ module AI =
                     let mutable value = -2
                     value <- max (minMax game (recurse currentPlayer.Next) List.max) value
                     value
-        
+
         recurse Naught game
 
 
